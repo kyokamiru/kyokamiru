@@ -56,11 +56,13 @@
 
 ## Phase 6: デプロイ
 
-- Vercel プロジェクト作成、環境変数設定、kyokamiru.com のドメイン割り当て
+- `@opennextjs/cloudflare` + `wrangler.jsonc` のセットアップ(`nodejs_compat`、ISR 用 R2/KV バインディング、`preview` / `deploy` スクリプト)
+- `pnpm preview` で Workers ランタイム上の全機能(ISR、Server Actions、on-demand revalidation)を確認
+- Cloudflare Workers へデプロイ、環境変数(`vars`)+ Worker Secret(`SUPABASE_SERVICE_ROLE_KEY`)設定、kyokamiru.com のドメイン割り当て(Cloudflare DNS)
 - 本番 Supabase にマイグレーション適用(シードは流さない)
 - 運営アカウントを Supabase ダッシュボードで作成
 
-**受け入れ条件**: 本番 URL で管理画面からゲームを 1 件登録 → 公開ページに表示される。
+**受け入れ条件**: 本番 URL で管理画面からゲームを 1 件登録 → 公開ページに表示される(on-demand revalidation が Workers 上で動作している)。
 
 ## スコープ外(実装しないこと)
 

@@ -34,8 +34,8 @@ GET https://store.steampowered.com/api/appdetails?appids={appId}&cc=jp&l=japanes
 
 requirements.md §10 の調査(2026-07-14)に基づく確定方針:
 
-1. **ホットリンクのみ**: `header_image_url` に保存した Steam CDN の URL を `<img src>` で直接参照する。画像ファイルのダウンロード・再ホスティング(Supabase Storage / public/ / Vercel 経由のプロキシ)は**禁止**
-2. `next/image` を使う場合は `remotePatterns` に Steam CDN ドメイン(`cdn.cloudflare.steamstatic.com`、`shared.cloudflare.steamstatic.com` 等)を許可する。ただし Vercel の画像最適化は「再配信」に近くなるため、**`unoptimized` で素の img として配信する**(`loading="lazy"` と `width/height` 指定で代替)
+1. **ホットリンクのみ**: `header_image_url` に保存した Steam CDN の URL を `<img src>` で直接参照する。画像ファイルのダウンロード・再ホスティング(Supabase Storage / public/ / Workers 経由のプロキシ)は**禁止**
+2. 画像最適化(サーバー側でのリサイズ・再エンコード)は行わない。最適化を通すと自サーバーからの「再配信」に近くなるため、**素の `<img>`(または `next/image` の `unoptimized`)で Steam CDN から直接配信する**(`loading="lazy"` と `width/height` 指定で代替)。Cloudflare Images / Workers での画像プロキシも使わない
 3. 画像が 404 になった場合(ストア取り下げ等)に備え、`onError` 相当のフォールバック(タイトル文字のプレースホルダー)を用意する
 4. Steam ロゴ・商標画像は使わない。「Steam で見る」テキストリンクのみ
 5. フッターに Valve 帰属表示(screens.md §0 Footer)

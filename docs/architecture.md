@@ -6,15 +6,24 @@
 ## 1. 全体構成
 
 ```
-[ユーザー] ──> Vercel (Next.js App Router)
+[ユーザー] ──> Cloudflare Workers (Next.js App Router / @opennextjs/cloudflare)
                  ├─ 公開ページ: ISR (revalidate) + Server Components
+                 │    └─ ISR キャッシュ: R2 / KV バインディング(OpenNext 設定)
                  ├─ 管理画面 (/admin): 動的レンダリング + Supabase Auth
                  └─ Server Actions / Route Handlers
                        ├──> Supabase (PostgreSQL, RLS)
                        └──> Steam Storefront API (管理画面からの取込時のみ)
 
 [ゲーム画像] ブラウザ ──直接──> Steam CDN (ホットリンク、プロキシしない)
+[DNS/ドメイン] kyokamiru.com は Cloudflare DNS で管理
 ```
+
+### ホスティング方式(確定)
+
+- **Cloudflare Workers + `@opennextjs/cloudflare`(OpenNext アダプタ)** を使う。Cloudflare Pages + `next-on-pages` は使わない(非推奨経路)
+- `wrangler.jsonc` で `nodejs_compat` フラグを有効化する(@supabase/supabase-js の動作に必要)
+- ISR の incremental cache 用に R2(または KV)バインディングを OpenNext の設定(`open-next.config.ts`)で構成する。`revalidatePath` / `revalidateTag` による on-demand revalidation もこの構成で動作させる
+- デプロイ: `opennextjs-cloudflare build` → `wrangler deploy`(CI は GitHub Actions または Workers Builds)
 
 ## 2. レンダリング戦略
 
@@ -84,7 +93,8 @@ kyoka-miru/
 | `SUPABASE_SERVICE_ROLE_KEY` | **サーバーのみ** | 管理画面の書き込み(Server Actions 内のみで使用) |
 | `NEXT_PUBLIC_SITE_URL` | クライアント可 | `https://kyokamiru.com`(OGP・sitemap 用) |
 
-`.env.local.example` を用意し、実キーはコミットしない。
+- ローカル開発: `.env.local`(`.env.local.example` を用意し、実キーはコミットしない)
+- 本番(Cloudflare): 公開可能な変数は `wrangler.jsonc` の `vars`、`SUPABASE_SERVICE_ROLE_KEY` は **Worker Secret**(`wrangler secret put`)で設定する。`wrangler.jsonc` にシークレットを書かない
 
 ## 5. 認証(管理画面)
 

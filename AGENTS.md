@@ -22,7 +22,7 @@
 - Next.js(App Router)+ TypeScript(strict)
 - Tailwind CSS
 - Supabase(PostgreSQL + Auth)
-- ホスティング: Vercel
+- ホスティング: Cloudflare Workers(`@opennextjs/cloudflare`。Pages + next-on-pages は使わない)
 - パッケージマネージャ: pnpm
 
 ## コマンド
@@ -33,7 +33,11 @@ pnpm dev              # 開発サーバー (http://localhost:3000)
 pnpm build            # 本番ビルド(コミット前に必ず通すこと)
 pnpm lint             # ESLint
 pnpm typecheck        # tsc --noEmit
+pnpm preview          # opennextjs-cloudflare build + wrangler dev(Workers ランタイムでの動作確認)
+pnpm deploy           # opennextjs-cloudflare build + wrangler deploy(手動デプロイ)
 ```
+
+Workers ランタイム固有の挙動(Node API 互換等)が関わる変更は `pnpm preview` でも確認すること。
 
 ## コーディング規約
 
