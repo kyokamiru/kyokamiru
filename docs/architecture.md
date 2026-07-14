@@ -1,0 +1,105 @@
+# アーキテクチャ — キョカミル
+
+- 更新日: 2026-07-14
+- 前提: [requirements.md](requirements.md) §7 の技術スタック決定に基づく
+
+## 1. 全体構成
+
+```
+[ユーザー] ──> Vercel (Next.js App Router)
+                 ├─ 公開ページ: ISR (revalidate) + Server Components
+                 ├─ 管理画面 (/admin): 動的レンダリング + Supabase Auth
+                 └─ Server Actions / Route Handlers
+                       ├──> Supabase (PostgreSQL, RLS)
+                       └──> Steam Storefront API (管理画面からの取込時のみ)
+
+[ゲーム画像] ブラウザ ──直接──> Steam CDN (ホットリンク、プロキシしない)
+```
+
+## 2. レンダリング戦略
+
+| ページ | 戦略 | 理由 |
+|--------|------|------|
+| トップ `/` | ISR(revalidate: 3600) | 新着表示があるが即時性不要 |
+| ゲーム一覧 `/games` | 動的(searchParams でフィルタ) | 検索・フィルタはクエリパラメータ駆動 |
+| ゲーム詳細 `/games/[slug]` | ISR(revalidate: 3600)+ generateStaticParams | SEO 最重要ページ。ビルド時に全件生成 |
+| パブリッシャー `/publishers/[slug]` | ISR(revalidate: 3600) | 同上 |
+| 静的ページ | 静的 | — |
+| 管理画面 `/admin/*` | 動的(no-store) | 常に最新データ |
+
+- 管理画面でデータを更新したら `revalidatePath` / `revalidateTag` で該当公開ページを即時再生成する(on-demand revalidation)。
+
+## 3. ディレクトリ構造
+
+```
+kyoka-miru/
+├── AGENTS.md
+├── docs/                        # 仕様ドキュメント(本ファイル群)
+├── supabase/
+│   ├── migrations/              # SQL マイグレーション(番号順)
+│   └── seed.sql                 # 開発用シードデータ
+├── public/
+├── src/
+│   ├── app/
+│   │   ├── (public)/            # 公開ページ群(共通レイアウト: ヘッダー/フッター)
+│   │   │   ├── page.tsx                     # トップ
+│   │   │   ├── games/page.tsx               # 一覧・検索
+│   │   │   ├── games/[slug]/page.tsx        # 詳細
+│   │   │   ├── publishers/page.tsx
+│   │   │   ├── publishers/[slug]/page.tsx
+│   │   │   ├── about/page.tsx
+│   │   │   ├── terms/page.tsx               # 免責事項・利用規約
+│   │   │   └── contact/page.tsx
+│   │   ├── admin/               # 管理画面(認証必須)
+│   │   │   ├── layout.tsx                   # 認証ガード
+│   │   │   ├── login/page.tsx
+│   │   │   ├── page.tsx                     # ダッシュボード(登録数・要再確認一覧)
+│   │   │   ├── games/page.tsx               # ゲーム管理一覧
+│   │   │   ├── games/new/page.tsx           # 新規登録(Steam 取込含む)
+│   │   │   ├── games/[id]/page.tsx          # 編集
+│   │   │   └── publishers/...               # 同様の CRUD
+│   │   ├── sitemap.ts
+│   │   ├── robots.ts
+│   │   └── layout.tsx
+│   ├── components/              # 共有 UI(StatusBadge, DisclaimerNote, GameCard 等)
+│   ├── lib/
+│   │   ├── supabase/
+│   │   │   ├── server.ts        # サーバー用クライアント(cookies 連携)
+│   │   │   └── admin.ts         # service_role クライアント(Server Action 専用)
+│   │   ├── steam.ts             # Steam Storefront API クライアント
+│   │   ├── labels.ts            # enum 値 → 日本語ラベルの一元定義
+│   │   └── queries.ts           # 公開ページ用のデータ取得関数
+│   └── types/
+│       └── database.ts          # supabase gen types で生成
+├── package.json
+└── ...
+```
+
+## 4. 環境変数
+
+| 変数 | 公開範囲 | 用途 |
+|------|---------|------|
+| `NEXT_PUBLIC_SUPABASE_URL` | クライアント可 | Supabase プロジェクト URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | クライアント可 | anon キー(RLS 前提) |
+| `SUPABASE_SERVICE_ROLE_KEY` | **サーバーのみ** | 管理画面の書き込み(Server Actions 内のみで使用) |
+| `NEXT_PUBLIC_SITE_URL` | クライアント可 | `https://kyokamiru.com`(OGP・sitemap 用) |
+
+`.env.local.example` を用意し、実キーはコミットしない。
+
+## 5. 認証(管理画面)
+
+- Supabase Auth のメール+パスワード。運営アカウントのみ(サインアップ画面は作らない。アカウントは Supabase ダッシュボードで作成)
+- `/admin/*` は `layout.tsx` でセッション検証し、未認証は `/admin/login` へリダイレクト
+- 書き込みは Server Actions 経由。Action 冒頭で必ずセッションを再検証してから service_role クライアントを使う
+
+## 6. SEO 要件
+
+- 各ゲーム詳細ページ: `generateMetadata` で title(`{ゲーム名}の配信・収益化ガイドライン | キョカミル`)、description、OGP を生成
+- JSON-LD: `VideoGame` スキーマを詳細ページに埋め込む
+- `sitemap.ts` で全公開ゲーム・パブリッシャーページを列挙
+- `robots.ts` で `/admin` を Disallow
+
+## 7. 広告(AdSense)
+
+- MVP では **広告スロットのプレースホルダーコンポーネント**(`<AdSlot />`)だけ実装する(一覧ページのカード間、詳細ページの下部)
+- AdSense の実タグ導入はサイト審査後。スクリプト読み込みは環境変数でオン/オフできる構造にする
