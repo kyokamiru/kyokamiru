@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+:root {
+  --page-background: #172333;
+  --page-background-deep: #111a26;
+  --panel-background: #21354a;
+  --panel-background-muted: #1b2b3d;
+  --border-color: #35536d;
+  --text-primary: #f3f7fa;
+  --text-secondary: #c5d2dc;
+  --text-muted: #92a7b7;
+  --accent: #66b9e8;
+  --accent-strong: #8cccf0;
+  --status-allowed: #84c45b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--page-background-deep);
+}
+
+body {
+  min-height: 100dvh;
+  margin: 0;
+  background: var(--page-background);
+  color: var(--text-secondary);
+  font-family: "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", sans-serif;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--page-background-deep);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 3px;
+}
