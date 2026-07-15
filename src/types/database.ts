@@ -44,16 +44,21 @@ export type Database = {
           id: string
           last_verified_at: string | null
           monetization_status: Database["public"]["Enums"]["approval_status"]
+          movie_thumbnail_url: string | null
+          movie_url: string | null
           music_restriction: Database["public"]["Enums"]["music_status"]
           notes: string | null
+          play_modes: string[]
           prior_application: Database["public"]["Enums"]["application_status"]
           published: boolean
           publisher_id: string
           release_date: string | null
+          screenshots: string[]
           slug: string
           spoiler_restriction: Database["public"]["Enums"]["spoiler_status"]
           steam_app_id: number | null
           streaming_status: Database["public"]["Enums"]["approval_status"]
+          summary: string | null
           title: string
           title_en: string | null
           updated_at: string
@@ -67,16 +72,21 @@ export type Database = {
           id?: string
           last_verified_at?: string | null
           monetization_status?: Database["public"]["Enums"]["approval_status"]
+          movie_thumbnail_url?: string | null
+          movie_url?: string | null
           music_restriction?: Database["public"]["Enums"]["music_status"]
           notes?: string | null
+          play_modes?: string[]
           prior_application?: Database["public"]["Enums"]["application_status"]
           published?: boolean
           publisher_id: string
           release_date?: string | null
+          screenshots?: string[]
           slug: string
           spoiler_restriction?: Database["public"]["Enums"]["spoiler_status"]
           steam_app_id?: number | null
           streaming_status?: Database["public"]["Enums"]["approval_status"]
+          summary?: string | null
           title: string
           title_en?: string | null
           updated_at?: string
@@ -90,16 +100,21 @@ export type Database = {
           id?: string
           last_verified_at?: string | null
           monetization_status?: Database["public"]["Enums"]["approval_status"]
+          movie_thumbnail_url?: string | null
+          movie_url?: string | null
           music_restriction?: Database["public"]["Enums"]["music_status"]
           notes?: string | null
+          play_modes?: string[]
           prior_application?: Database["public"]["Enums"]["application_status"]
           published?: boolean
           publisher_id?: string
           release_date?: string | null
+          screenshots?: string[]
           slug?: string
           spoiler_restriction?: Database["public"]["Enums"]["spoiler_status"]
           steam_app_id?: number | null
           streaming_status?: Database["public"]["Enums"]["approval_status"]
+          summary?: string | null
           title?: string
           title_en?: string | null
           updated_at?: string

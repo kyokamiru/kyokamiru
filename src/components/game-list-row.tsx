@@ -6,6 +6,7 @@ import type { PublicGameSummary } from "./game-types";
 import { SourceLink } from "./source-link";
 import { StatusBadge } from "./status-badge";
 import { SteamImage } from "./steam-image";
+import { PlayModeList } from "./play-mode-list";
 
 export function GameListRow({ game }: { game: PublicGameSummary }) {
   return (
@@ -41,6 +42,7 @@ export function GameListRow({ game }: { game: PublicGameSummary }) {
               <span key={genre}>{genre}</span>
             ))}
           </div>
+          {game.play_modes?.length ? <div className="mt-3"><PlayModeList modes={game.play_modes} /></div> : null}
         </div>
 
         <div className="border-t border-[var(--border-color)] bg-[var(--panel-background-deep)] p-4 sm:border-t-0 sm:border-l">

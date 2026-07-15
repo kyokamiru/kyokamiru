@@ -8,6 +8,7 @@ import { GameListRow } from "@/components/game-list-row";
 import { Pagination } from "@/components/pagination";
 import { createPageMetadata } from "@/lib/metadata";
 import { getGameGenres, getGames, getPublishers } from "@/lib/queries";
+import { playModeLabels, type PlayMode } from "@/lib/labels";
 import type { Database } from "@/types/database";
 
 export const metadata: Metadata = createPageMetadata({
@@ -29,6 +30,20 @@ function approvalValue(value: string | undefined): ApprovalStatus | undefined {
     : undefined;
 }
 
+function modeValues(value: string | string[] | undefined) {
+  const values = (Array.isArray(value) ? value : [value]).flatMap((item) => item?.split(",") ?? []);
+  return [...new Set(values)].filter((mode): mode is PlayMode => mode in playModeLabels);
+}
+
+function filterHref(values: Record<string, string | undefined>, changes: Record<string, string | undefined>) {
+  const params = new URLSearchParams();
+  Object.entries({ ...values, ...changes }).forEach(([key, value]) => {
+    if (value) params.set(key, value);
+  });
+  const query = params.toString();
+  return query ? `/games?${query}` : "/games";
+}
+
 export default async function GamesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const raw = await searchParams;
   const q = valueOf(raw.q);
@@ -36,6 +51,8 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
   const monetization = valueOf(raw.monetization);
   const publisher = valueOf(raw.publisher);
   const genre = valueOf(raw.genre);
+  const modes = modeValues(raw.mode);
+  const mode = modes.join(",") || undefined;
   const sort = valueOf(raw.sort);
   const requestedPage = Number(valueOf(raw.page));
 
@@ -46,6 +63,7 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
       monetization: approvalValue(monetization),
       publisher,
       genre,
+      modes,
       sort: sort === "verified" || sort === "added" ? sort : "name",
       page: requestedPage,
     }),
@@ -53,7 +71,7 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
     getGameGenres(),
   ]);
 
-  const filterValues = { q, streaming, monetization, publisher, genre, sort };
+  const filterValues = { q, streaming, monetization, publisher, genre, mode, sort };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -71,6 +89,25 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
         </div>
 
         <div className="min-w-0 lg:order-1">
+          {genre || modes.length ? (
+            <div className="mb-4 flex flex-wrap items-center gap-2" aria-label="選択中の絞り込み">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">選択中</span>
+              {genre ? (
+                <Link href={filterHref(filterValues, { genre: undefined })} className="inline-flex min-h-8 items-center border border-[var(--accent-muted)] bg-[var(--panel-background-deep)] px-3 text-xs text-[var(--accent-strong)]">
+                  ジャンル: {genre}<span aria-hidden="true" className="ml-2">×</span>
+                </Link>
+              ) : null}
+              {modes.map((selectedMode) => (
+                <Link
+                  key={selectedMode}
+                  href={filterHref(filterValues, { mode: modes.filter((item) => item !== selectedMode).join(",") || undefined })}
+                  className="inline-flex min-h-8 items-center border border-[var(--accent-muted)] bg-[var(--panel-background-deep)] px-3 text-xs text-[var(--accent-strong)]"
+                >
+                  {playModeLabels[selectedMode]}<span aria-hidden="true" className="ml-2">×</span>
+                </Link>
+              ))}
+            </div>
+          ) : null}
           {result.games.length > 0 ? (
             <div className="space-y-3">
               {result.games.map((game, index) => (
@@ -91,7 +128,7 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
           <Pagination
             page={result.page}
             totalPages={result.totalPages}
-            searchParams={{ q, streaming, monetization, publisher, genre, sort }}
+            searchParams={{ q, streaming, monetization, publisher, genre, mode, sort }}
           />
         </div>
       </div>

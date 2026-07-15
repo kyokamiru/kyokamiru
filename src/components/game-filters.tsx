@@ -1,6 +1,9 @@
-import Link from "next/link";
+"use client";
 
-import { approvalStatusLabels } from "@/lib/labels";
+import Link from "next/link";
+import { useState } from "react";
+
+import { approvalStatusLabels, playModeLabels } from "@/lib/labels";
 
 type FilterValues = {
   q?: string;
@@ -8,6 +11,7 @@ type FilterValues = {
   monetization?: string;
   publisher?: string;
   genre?: string;
+  mode?: string;
   sort?: string;
 };
 
@@ -28,6 +32,8 @@ function FilterForm({
   genres,
   idPrefix,
 }: GameFiltersProps & { idPrefix: string }) {
+  const [modes, setModes] = useState(() => values.mode?.split(",").filter(Boolean) ?? []);
+
   return (
     <form action="/games" className="space-y-4">
       <div>
@@ -43,6 +49,24 @@ function FilterForm({
           className="min-h-10 w-full border border-[var(--border-color)] bg-[var(--input-background)] px-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
         />
       </div>
+
+      <fieldset>
+        <legend className="mb-2 text-sm font-semibold text-[var(--text-primary)]">プレイ形式</legend>
+        <input type="hidden" name="mode" value={modes.join(",")} />
+        <div className="space-y-2">
+          {Object.entries(playModeLabels).map(([value, label]) => (
+            <label key={value} className="flex min-h-10 items-center gap-3 border border-[var(--border-color)] bg-[var(--input-background)] px-3 py-2 text-sm text-[var(--text-secondary)]">
+              <input
+                type="checkbox"
+                checked={modes.includes(value)}
+                onChange={() => setModes((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value])}
+                className="size-4 accent-[var(--accent)]"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <div>
         <label htmlFor={`${idPrefix}-streaming`} className="mb-1 block text-sm font-semibold text-[var(--text-primary)]">

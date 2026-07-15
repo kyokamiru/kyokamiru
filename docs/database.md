@@ -1,6 +1,6 @@
 # データベース設計 — キョカミル
 
-- 更新日: 2026-07-14
+- 更新日: 2026-07-15(v2: play_modes・メディア・summary カラムを追加)
 - 対象: Supabase (PostgreSQL)
 - マイグレーションは `supabase/migrations/` に SQL で管理する。以下の DDL が正。
 
@@ -39,6 +39,20 @@ create type guideline_scope as enum ('publisher_wide', 'title_specific');
 | `not_required` / `required` | 不要 / 必要 | 緑 / 黄 |
 | `guideline` / `eula` / `faq` / `dev_statement` / `other` | 公式ガイドライン / EULA / 公式FAQ / 開発者発言 / その他 | — |
 
+### play_mode 値(games.play_modes に格納する固定語彙)
+
+DB 上は enum にせず `text[]` で保持する(Steam カテゴリの将来変化に追従しやすくするため)が、**使用してよい値は以下に限定**し、`src/lib/labels.ts` で一元管理する。
+
+| 値 | ラベル | 由来(Steam カテゴリ) |
+|----|--------|---------------------|
+| `singleplayer` | ソロ | シングルプレイヤー |
+| `online_pvp` | オンライン対戦 | オンライン PvP |
+| `online_coop` | オンライン協力 | オンライン協力プレイ |
+| `local_multi` | ローカルマルチ | 画面分割・ローカル PvP・ローカル協力 |
+| `mmo` | MMO | MMO |
+
+※ Steam API は正確な人数を返さないため「プレイ人数」ではなく「プレイスタイル」として扱う。マッピングの詳細は steam-integration.md §2。
+
 ## 2. テーブル定義
 
 ```sql
@@ -66,6 +80,11 @@ create table games (
   genres text[] not null default '{}',      -- Steam のジャンルをそのまま格納(日本語)
   steam_app_id integer unique,              -- 国内タイトル等 Steam 外は null 可
   header_image_url text,                    -- Steam CDN の URL(ホットリンク用)。自前ホスト禁止
+  play_modes text[] not null default '{}',  -- プレイスタイル(§1 の play_mode 固定語彙のみ)
+  screenshots text[] not null default '{}', -- Steam CDN の URL 最大 6 件(ホットリンク用)。自前ホスト禁止
+  movie_url text,                           -- トレーラー動画(Steam CDN の mp4 URL)。自前ホスト禁止
+  movie_thumbnail_url text,                 -- 動画ポスター画像(Steam CDN)
+  summary text,                             -- 運営執筆の一言紹介(1〜2 文、200 文字まで)。Steam 説明文の転載禁止
   guideline_scope guideline_scope not null default 'title_specific',
 
   -- 許諾情報(すべて必須。不明なら 'unknown' を明示的に選ぶ)
@@ -85,6 +104,7 @@ create table games (
 
 create index games_publisher_id_idx on games(publisher_id);
 create index games_published_idx on games(published) where published = true;
+create index games_play_modes_idx on games using gin (play_modes); -- mode フィルタ(配列の重なり検索)用
 
 create table sources (
   id uuid primary key default gen_random_uuid(),
@@ -140,6 +160,24 @@ create policy "public read sources of published games" on sources
 ```
 
 - 管理画面の読み取り(下書き含む全件)と書き込みは service_role キーを使うため RLS をバイパスする。service_role の使用は認証済みセッションを検証した Server Action 内に限定すること(architecture.md §5)。
+
+### 適用済み DB への追加マイグレーション(v2)
+
+初期スキーマは本番適用済みのため、v2 のカラム追加は**新規マイグレーションファイル**として作成する(初期スキーマの書き換え禁止):
+
+```sql
+-- supabase/migrations/<timestamp>_add_media_and_play_modes.sql
+alter table games
+  add column play_modes text[] not null default '{}',
+  add column screenshots text[] not null default '{}',
+  add column movie_url text,
+  add column movie_thumbnail_url text,
+  add column summary text;
+
+create index games_play_modes_idx on games using gin (play_modes);
+```
+
+適用後は型生成(§5)を必ず実行する。
 
 ## 4. ビジネスルール
 

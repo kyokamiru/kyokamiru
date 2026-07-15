@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { GameCapsule } from "@/components/game-capsule";
+import { HeroCarousel } from "@/components/hero-carousel";
 import { StatusBadge } from "@/components/status-badge";
-import { getNewGames, getRecentlyVerifiedGames } from "@/lib/queries";
+import { getGameGenres, getNewGames, getRecentlyVerifiedGames } from "@/lib/queries";
 import { createPageMetadata } from "@/lib/metadata";
+import { playModeLabels } from "@/lib/labels";
 
 export const metadata: Metadata = createPageMetadata({
   title: "ゲーム配信ガイドラインDB",
@@ -46,38 +48,19 @@ function GameSection({
 }
 
 export default async function HomePage() {
-  const [newGames, recentlyVerifiedGames] = await Promise.all([
+  const [heroGames, newGames, recentlyVerifiedGames, genres] = await Promise.all([
+    getNewGames(5),
     getNewGames(8),
     getRecentlyVerifiedGames(8),
+    getGameGenres(),
   ]);
 
   return (
     <>
       <section className="border-b border-[var(--border-color)] bg-[var(--panel-background-muted)]">
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-          <div className="max-w-4xl border-l-4 border-[var(--accent)] pl-5 sm:pl-7">
-            <p className="text-sm font-bold text-[var(--accent-strong)]">配信ガイドラインデータベース</p>
-            <h1 className="mt-3 text-balance text-3xl font-black leading-tight text-[var(--text-primary)] sm:text-5xl">
-              このゲーム、<span className="whitespace-nowrap">収益化配信して</span>大丈夫？
-            </h1>
-            <p className="mt-5 max-w-2xl text-pretty text-base leading-7 text-[var(--text-secondary)] sm:text-lg">
-              配信可否・収益化可否と、その判断の根拠になる公式情報を10秒で確認できます。
-            </p>
-          </div>
-
-          <form action="/games" className="mt-8 flex max-w-4xl border border-[var(--border-color)] bg-[var(--page-background-deep)] p-2 shadow-lg">
-            <label htmlFor="hero-search" className="sr-only">ゲーム名・パブリッシャー名で検索</label>
-            <input
-              id="hero-search"
-              name="q"
-              type="search"
-              placeholder="ゲーム名・パブリッシャー名を入力"
-              className="min-h-12 min-w-0 flex-1 bg-transparent px-3 text-base text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-            />
-            <button type="submit" className="min-h-12 bg-[var(--accent)] px-5 font-bold text-[var(--page-background-deep)] hover:bg-[var(--accent-strong)] sm:px-8">
-              検索
-            </button>
-          </form>
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <p className="mb-3 text-sm font-bold text-[var(--accent-strong)]">このゲーム、収益化配信して大丈夫？</p>
+          <HeroCarousel games={heroGames} />
         </div>
       </section>
 
@@ -100,6 +83,20 @@ export default async function HomePage() {
                 <p className="mt-3 text-pretty text-sm leading-6 text-[var(--text-muted)]">{description}</p>
               </div>
             ))}
+          </div>
+          <div className="mt-8 grid gap-6 border-t border-[var(--border-color)] pt-6 lg:grid-cols-2">
+            <div>
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">ジャンルから探す</h3>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {genres.slice(0, 8).map((genre) => <Link key={genre} href={`/games?genre=${encodeURIComponent(genre)}`} className="border border-[var(--border-color)] bg-[var(--panel-background)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:border-[var(--accent-muted)] hover:text-white">{genre}</Link>)}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">プレイ形式から探す</h3>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {Object.entries(playModeLabels).map(([mode, label]) => <Link key={mode} href={`/games?mode=${mode}`} className="border border-[var(--border-color)] bg-[var(--panel-background)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:border-[var(--accent-muted)] hover:text-white">{label}</Link>)}
+              </div>
+            </div>
           </div>
         </section>
       </div>

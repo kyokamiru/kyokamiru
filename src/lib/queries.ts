@@ -19,6 +19,7 @@ export type GameListFilters = {
   monetization?: ApprovalStatus;
   publisher?: string;
   genre?: string;
+  modes?: string[];
   sort?: GameSort;
   page?: number;
 };
@@ -100,6 +101,7 @@ export async function getGames(
         title_en,
         release_date,
         genres,
+        play_modes,
         header_image_url,
         streaming_status,
         monetization_status,
@@ -140,6 +142,10 @@ export async function getGames(
 
   if (filters.genre) {
     query = query.contains("genres", [filters.genre]);
+  }
+
+  if (filters.modes?.length) {
+    query = query.overlaps("play_modes", filters.modes);
   }
 
   switch (filters.sort) {
@@ -273,6 +279,7 @@ export async function getPublisherBySlug(
           title_en,
           release_date,
           genres,
+          play_modes,
           header_image_url,
           streaming_status,
           monetization_status,
@@ -310,6 +317,7 @@ async function getGameSection(
         title,
         title_en,
         header_image_url,
+        play_modes,
         streaming_status,
         monetization_status,
         last_verified_at,

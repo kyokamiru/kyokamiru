@@ -10,7 +10,26 @@ const steamDataSchema = z.object({
     .array(z.object({ description: z.string() }))
     .optional()
     .default([]),
+  categories: z
+    .array(z.object({ description: z.string() }))
+    .optional()
+    .default([]),
   header_image: z.string().url().optional(),
+  screenshots: z
+    .array(z.object({ path_full: z.string().url() }))
+    .optional()
+    .default([]),
+  movies: z
+    .array(
+      z.object({
+        highlight: z.boolean().optional().default(false),
+        thumbnail: z.string().url(),
+        mp4: z.object({ "480": z.string().url().optional() }).optional(),
+        hls_h264: z.string().url().optional(),
+      }),
+    )
+    .optional()
+    .default([]),
 });
 
 const steamEnvelopeSchema = z.record(
@@ -29,7 +48,35 @@ export type SteamImportResult = {
   releaseDate: string | null;
   genres: string[];
   headerImageUrl: string | null;
+  playModes: string[];
+  screenshots: string[];
+  movieUrl: string | null;
+  movieThumbnailUrl: string | null;
 };
+
+const categoryMappings = [
+  { mode: "singleplayer", names: ["Single-player", "シングルプレイヤー"] },
+  { mode: "online_pvp", names: ["PvP", "Online PvP", "オンラインPvP", "オンライン PvP"] },
+  { mode: "online_coop", names: ["Co-op", "Online Co-op", "オンライン協力プレイ"] },
+  { mode: "local_multi", names: ["Shared/Split Screen", "Shared/Split Screen PvP", "Shared/Split Screen Co-op", "Remote Play Together", "画面分割", "ローカル PvP", "ローカル協力プレイ", "リモートプレイトゥギャザー", "画面共有/分割"] },
+  { mode: "mmo", names: ["MMO", "Massively Multiplayer", "MMOプレイヤー", "大規模マルチプレイヤー"] },
+] as const;
+
+function mapPlayModes(categories: string[]) {
+  const normalized = categories.map((category) => category.toLowerCase());
+  const modes = categoryMappings
+    .filter(({ names }) => names.some((name) => normalized.includes(name.toLowerCase())))
+    .map(({ mode }) => mode);
+  const hasGenericMultiplayer = normalized.some((category) =>
+    ["multi-player", "multiplayer", "マルチプレイヤー"].includes(category),
+  );
+
+  if (hasGenericMultiplayer && modes.length === 0) {
+    modes.push("online_pvp");
+  }
+
+  return modes;
+}
 
 export function extractSteamAppId(input: string) {
   const trimmed = input.trim();
@@ -104,6 +151,10 @@ export async function fetchSteamAppDetails(
     throw new Error("指定されたSteamゲームの情報が見つかりませんでした。");
   }
 
+  const movie =
+    app.data.movies.find((item) => item.highlight && (item.mp4?.["480"] || item.hls_h264)) ??
+    app.data.movies.find((item) => item.mp4?.["480"] || item.hls_h264);
+
   return {
     steamAppId: appId,
     title: app.data.name,
@@ -112,5 +163,9 @@ export async function fetchSteamAppDetails(
     releaseDate: parseReleaseDate(app.data.release_date?.date),
     genres: app.data.genres.map((genre) => genre.description),
     headerImageUrl: app.data.header_image ?? null,
+    playModes: mapPlayModes(app.data.categories.map((category) => category.description)),
+    screenshots: app.data.screenshots.map((screenshot) => screenshot.path_full),
+    movieUrl: movie?.mp4?.["480"] ?? movie?.hls_h264 ?? null,
+    movieThumbnailUrl: movie?.thumbnail ?? null,
   };
 }

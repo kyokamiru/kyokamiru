@@ -13,6 +13,7 @@ import {
   approvalStatusLabels,
   guidelineScopeLabels,
   musicStatusLabels,
+  playModeLabels,
   sourceTypeLabels,
   spoilerStatusLabels,
 } from "@/lib/labels";
@@ -100,6 +101,12 @@ export function GameForm({ action, publishers, game }: GameFormProps) {
   const [releaseDate, setReleaseDate] = useState(game?.release_date ?? "");
   const [genres, setGenres] = useState(game?.genres.join(", ") ?? "");
   const [headerImageUrl, setHeaderImageUrl] = useState(game?.header_image_url ?? "");
+  const [playModes, setPlayModes] = useState<string[]>(game?.play_modes ?? []);
+  const [screenshotOptions, setScreenshotOptions] = useState<string[]>(game?.screenshots ?? []);
+  const [screenshots, setScreenshots] = useState<string[]>(game?.screenshots ?? []);
+  const [movieUrl, setMovieUrl] = useState(game?.movie_url ?? "");
+  const [movieThumbnailUrl, setMovieThumbnailUrl] = useState(game?.movie_thumbnail_url ?? "");
+  const [summary, setSummary] = useState(game?.summary ?? "");
   const [lastVerifiedAt, setLastVerifiedAt] = useState(game?.last_verified_at ?? "");
   const [sources, setSources] = useState<SourceDraft[]>(
     game?.sources.map((source) => ({
@@ -127,6 +134,11 @@ export function GameForm({ action, publishers, game }: GameFormProps) {
       setReleaseDate(result.data.releaseDate ?? "");
       setGenres(result.data.genres.join(", "));
       setHeaderImageUrl(result.data.headerImageUrl ?? "");
+      setPlayModes(result.data.playModes);
+      setScreenshotOptions(result.data.screenshots);
+      setScreenshots(result.data.screenshots.slice(0, 6));
+      setMovieUrl(result.data.movieUrl ?? "");
+      setMovieThumbnailUrl(result.data.movieThumbnailUrl ?? "");
 
       if (result.data.publisherName) {
         const matched = publishers.find((publisher) =>
@@ -151,6 +163,13 @@ export function GameForm({ action, publishers, game }: GameFormProps) {
     setSources((current) => current.map((source, itemIndex) => itemIndex === index ? { ...source, ...update } : source));
   }
 
+  function toggleScreenshot(url: string) {
+    setScreenshots((current) => {
+      if (current.includes(url)) return current.filter((item) => item !== url);
+      return current.length < 6 ? [...current, url] : current;
+    });
+  }
+
   return (
     <form
       action={formAction}
@@ -159,11 +178,10 @@ export function GameForm({ action, publishers, game }: GameFormProps) {
     >
       {state.error ? <p role="alert" className="border-l-2 border-red-400 bg-red-950/50 px-4 py-3 text-sm text-red-200">{state.error}</p> : null}
 
-      {!game ? (
-        <section className="border border-slate-700 bg-slate-900">
+      <section className="border border-slate-700 bg-slate-900">
           <div className="border-b border-slate-700 px-5 py-4">
             <h2 className="text-balance text-lg font-bold text-white">Steamから取得</h2>
-            <p className="mt-1 text-pretty text-sm text-slate-400">App IDまたはストアURLから基本情報をフォームへ反映します。</p>
+            <p className="mt-1 text-pretty text-sm text-slate-400">App IDまたはストアURLから基本情報・プレイ形式・メディアをフォームへ反映します。</p>
           </div>
           <div className="flex flex-col gap-3 px-5 py-5 sm:flex-row">
             <input aria-label="Steam App IDまたはストアURL" value={steamInput} onChange={(event) => setSteamInput(event.target.value)} placeholder="367520 またはストアURL" className={inputClassName} />
@@ -172,8 +190,7 @@ export function GameForm({ action, publishers, game }: GameFormProps) {
             </button>
           </div>
           {steamError ? <p role="alert" className="mx-5 mb-5 text-sm text-red-300">{steamError}</p> : null}
-        </section>
-      ) : null}
+      </section>
 
       <section className="border border-slate-700 bg-slate-900">
         <div className="border-b border-slate-700 px-5 py-4"><h2 className="text-balance text-lg font-bold text-white">基本情報</h2></div>
@@ -185,6 +202,78 @@ export function GameForm({ action, publishers, game }: GameFormProps) {
           <div className="space-y-2"><label htmlFor="steam_app_id" className="block text-sm font-semibold text-slate-200">Steam App ID</label><input id="steam_app_id" name="steam_app_id" inputMode="numeric" value={steamInput} onChange={(event) => setSteamInput(event.target.value)} className={inputClassName} /><FieldError messages={state.fieldErrors.steam_app_id} /></div>
           <div className="space-y-2 sm:col-span-2"><label htmlFor="genres" className="block text-sm font-semibold text-slate-200">ジャンル</label><input id="genres" name="genres" value={genres} onChange={(event) => setGenres(event.target.value)} placeholder="アクション, アドベンチャー" className={inputClassName} /></div>
           <div className="space-y-2 sm:col-span-2"><label htmlFor="header_image_url" className="block text-sm font-semibold text-slate-200">Steamヘッダー画像URL</label><input id="header_image_url" name="header_image_url" type="url" value={headerImageUrl} onChange={(event) => setHeaderImageUrl(event.target.value)} className={inputClassName} /><p className="text-pretty text-xs text-slate-500">Steam CDNのURLのみ保存し、画像ファイルは保存しません。</p><FieldError messages={state.fieldErrors.header_image_url} /></div>
+        </div>
+      </section>
+
+      <section className="border border-slate-700 bg-slate-900">
+        <div className="border-b border-slate-700 px-5 py-4">
+          <h2 className="text-balance text-lg font-bold text-white">プレイ形式とメディア</h2>
+          <p className="mt-1 text-pretty text-sm text-slate-400">Steam CDNのURLだけを保存します。スクリーンショットは最大6枚です。</p>
+        </div>
+        <div className="space-y-6 px-5 py-5">
+          <fieldset>
+            <legend className="text-sm font-semibold text-slate-200">プレイ形式</legend>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {Object.entries(playModeLabels).map(([value, label]) => (
+                <label key={value} className="flex min-h-11 items-center gap-3 border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200">
+                  <input
+                    name="play_modes"
+                    type="checkbox"
+                    value={value}
+                    checked={playModes.includes(value)}
+                    onChange={() => setPlayModes((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value])}
+                    className="size-5 accent-sky-500"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="summary" className="text-sm font-semibold text-slate-200">ゲーム概要</label>
+              <span className="text-xs tabular-nums text-slate-500">{summary.length} / 200</span>
+            </div>
+            <textarea id="summary" name="summary" rows={4} maxLength={200} value={summary} onChange={(event) => setSummary(event.target.value)} className={inputClassName} />
+            <p className="text-pretty text-xs text-amber-300">Steamの説明文は転載せず、運営が独自に作成した短い概要のみ入力してください。</p>
+            <FieldError messages={state.fieldErrors.summary} />
+          </div>
+
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-200">スクリーンショット</p>
+              <p className="text-xs tabular-nums text-slate-500">{screenshots.length} / 6枚を選択</p>
+            </div>
+            {screenshotOptions.length ? (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {screenshotOptions.map((url, index) => {
+                  const selected = screenshots.includes(url);
+                  return (
+                    <label key={url} className={`block cursor-pointer border p-2 ${selected ? "border-sky-400 bg-sky-950/40" : "border-slate-700 bg-slate-950"}`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={`Steamスクリーンショット候補 ${index + 1}`} className="aspect-video w-full object-cover" loading="lazy" />
+                      <span className="mt-2 flex items-center gap-2 text-xs text-slate-300">
+                        <input type="checkbox" checked={selected} disabled={!selected && screenshots.length >= 6} onChange={() => toggleScreenshot(url)} className="size-4 accent-sky-500" />
+                        {selected ? "掲載する" : "選択する"}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            ) : <p className="mt-3 text-sm text-slate-500">Steamから取得すると候補が表示されます。</p>}
+            {screenshots.map((url) => <input key={url} type="hidden" name="screenshots" value={url} />)}
+            <FieldError messages={state.fieldErrors.screenshots} />
+          </div>
+
+          <input type="hidden" name="movie_url" value={movieUrl} />
+          <input type="hidden" name="movie_thumbnail_url" value={movieThumbnailUrl} />
+          {movieUrl ? (
+            <div className="border border-slate-700 bg-slate-950 p-3">
+              <p className="text-sm font-semibold text-slate-200">ムービーを取得済み</p>
+              <p className="mt-1 text-pretty text-xs text-slate-500">詳細画面では再生操作が行われるまで動画本体を読み込みません。</p>
+            </div>
+          ) : null}
         </div>
       </section>
 

@@ -4,8 +4,9 @@ import { notFound } from "next/navigation";
 
 import { AdSlot } from "@/components/ad-slot";
 import { DisclaimerNote } from "@/components/disclaimer-note";
+import { MediaGallery } from "@/components/media-gallery";
+import { PlayModeList } from "@/components/play-mode-list";
 import { StatusBadge } from "@/components/status-badge";
-import { SteamImage } from "@/components/steam-image";
 import { approvalStatusLabels, sourceTypeLabels } from "@/lib/labels";
 import { createPageMetadata } from "@/lib/metadata";
 import { getGameBySlug, getPublishedGameSlugs } from "@/lib/queries";
@@ -88,16 +89,17 @@ export default async function GameDetailPage({ params }: PageProps) {
       </nav>
 
       <header className="border border-[var(--border-color)] bg-[var(--panel-background)] shadow-lg">
-        <div className="border-b border-[var(--border-color)] bg-[var(--panel-background-deep)] px-5 py-4">
-          <h1 className="text-balance text-2xl font-black text-[var(--text-primary)] sm:text-3xl">{game.title}</h1>
-          {game.title_en && game.title_en !== game.title ? <p className="mt-1 text-sm text-[var(--text-muted)]">{game.title_en}</p> : null}
-        </div>
-
         <div className="grid lg:grid-cols-[minmax(0,1.55fr)_minmax(19rem,0.75fr)]">
-          <div className="border-b border-[var(--border-color)] lg:border-r lg:border-b-0">
-            <SteamImage src={game.header_image_url} alt={`${game.title}のSteamヘッダー画像`} eager className="h-full w-full" />
+          <div className="border-b border-[var(--border-color)] lg:col-start-1 lg:row-start-1 lg:border-r">
+            <MediaGallery
+              title={game.title}
+              headerImageUrl={game.header_image_url}
+              screenshots={game.screenshots}
+              movieUrl={game.movie_url}
+              movieThumbnailUrl={game.movie_thumbnail_url}
+            />
           </div>
-          <aside className="bg-[var(--panel-background-deep)] p-5">
+          <aside className="border-b border-[var(--border-color)] bg-[var(--panel-background-deep)] p-4 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:border-b-0">
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-1">
               <div>
                 <p className="mb-2 text-sm font-semibold text-[var(--text-muted)]">配信可否</p>
@@ -115,6 +117,11 @@ export default async function GameDetailPage({ params }: PageProps) {
               <a href="#sources" className="text-[var(--accent-strong)] underline underline-offset-4">根拠情報を見る（{sources.length}件）</a>
             </div>
           </aside>
+          <div className="bg-[var(--panel-background)] px-5 py-4 lg:col-start-1 lg:row-start-2 lg:border-r lg:border-[var(--border-color)]">
+            <h1 className="text-balance text-2xl font-black text-[var(--text-primary)] sm:text-3xl">{game.title}</h1>
+            {game.title_en && game.title_en !== game.title ? <p className="mt-1 text-sm text-[var(--text-muted)]">{game.title_en}</p> : null}
+            {game.summary ? <p className="mt-3 max-w-3xl text-pretty text-sm leading-6 text-[var(--text-secondary)]">{game.summary}</p> : null}
+          </div>
         </div>
       </header>
 
@@ -159,6 +166,7 @@ export default async function GameDetailPage({ params }: PageProps) {
             <div><dt className="text-xs">パブリッシャー</dt><dd className="mt-1"><Link href={`/publishers/${game.publisher.slug}`} className="text-[var(--accent-strong)]">{game.publisher.name}</Link></dd></div>
             <div><dt className="text-xs">発売日</dt><dd className="mt-1 tabular-nums text-[var(--text-secondary)]">{formatDate(game.release_date)}</dd></div>
             <div><dt className="text-xs">ジャンル</dt><dd className="mt-1 flex flex-wrap gap-2 text-[var(--text-secondary)]">{game.genres.map((genre) => <span key={genre}>{genre}</span>)}</dd></div>
+            {game.play_modes.length ? <div><dt className="text-xs">プレイ形式</dt><dd className="mt-2"><PlayModeList modes={game.play_modes} /></dd></div> : null}
           </dl>
           {steamUrl ? (
             <a href={steamUrl} target="_blank" rel="noopener noreferrer" className="mt-6 flex min-h-10 items-center justify-center border border-[var(--accent-muted)] px-4 font-bold text-[var(--accent-strong)] hover:border-[var(--accent)] hover:text-white">Steam で見る</a>

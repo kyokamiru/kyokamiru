@@ -19,6 +19,7 @@ export type PublicGameSummary = Pick<
 > & {
   release_date?: Tables<"games">["release_date"];
   genres?: Tables<"games">["genres"];
+  play_modes?: Tables<"games">["play_modes"];
   publisher: Pick<Tables<"publishers">, "id" | "slug" | "name" | "name_en">;
   sources: PublicSource[];
 };

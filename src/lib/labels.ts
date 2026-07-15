@@ -36,3 +36,13 @@ export const guidelineScopeLabels = {
   title_specific: "タイトル個別",
   publisher_wide: "パブリッシャー包括",
 } as const;
+
+export const playModeLabels = {
+  singleplayer: "ソロ",
+  online_pvp: "オンライン対戦",
+  online_coop: "オンライン協力",
+  local_multi: "ローカルマルチ",
+  mmo: "MMO",
+} as const;
+
+export type PlayMode = keyof typeof playModeLabels;

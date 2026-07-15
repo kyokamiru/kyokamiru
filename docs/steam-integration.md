@@ -1,6 +1,6 @@
 # Steam 連携仕様 — キョカミル
 
-- 更新日: 2026-07-14
+- 更新日: 2026-07-15(v2: プレイスタイル・スクリーンショット・動画の取込を追加)
 - 目的: ゲームの基本メタデータ入力を自動化する(許諾情報は常に人力)。
 
 ## 1. 使用 API
@@ -26,15 +26,38 @@ GET https://store.steampowered.com/api/appdetails?appids={appId}&cc=jp&l=japanes
 | `release_date.date` | `release_date` | 日本語ロケールの日付文字列(例: "2017年2月24日")をパースする。パース失敗時は空にして手入力 |
 | `genres[].description` | `genres` | 日本語ジャンル名の配列 |
 | `header_image` | `header_image_url` | Steam CDN URL をそのまま保存 |
+| `categories[].description` | `play_modes` | 下記マッピング表で固定語彙に変換。該当なしは空配列 |
+| `screenshots[].path_full` | `screenshots` | 先頭 6 件を既定選択とし、管理画面で取捨選択(URL をそのまま保存) |
+| `movies[]` | `movie_url` / `movie_thumbnail_url` | `highlight: true` の先頭 1 件を優先、なければ先頭 1 件。`mp4.480` の URL と `thumbnail` を保存。movies がなければ両方 null |
 | (入力値) | `steam_app_id` | — |
 
 ストア URL(`https://store.steampowered.com/app/{id}/...`)が入力された場合は App ID を正規表現で抽出する。
+
+### categories → play_modes マッピング
+
+Steam の `categories[].description`(日本語ロケール)を以下のルールで変換する。1 ゲームに複数該当可。マッチしないカテゴリ(実績、コントローラ対応等)は無視する。
+
+| Steam カテゴリ(含まれていたら) | play_mode 値 |
+|-------------------------------|-------------|
+| シングルプレイヤー | `singleplayer` |
+| オンライン PvP | `online_pvp` |
+| オンライン協力プレイ | `online_coop` |
+| 画面分割 / ローカル PvP / ローカル協力プレイ / リモートプレイトゥギャザー | `local_multi` |
+| MMO / 大規模マルチプレイヤー | `mmo` |
+| マルチプレイヤー(上記のいずれにも該当しない場合のみ) | `online_pvp` |
+
+- ロケール差異に備え、英語表記(`Single-player`、`Online PvP` 等)でもマッチさせる
+- 自動判定はあくまでプリフィル。管理画面で運営が修正できる(screens.md §7)
+
+### 説明文は取り込まない(重要)
+
+`short_description` / `detailed_description` は**保存・表示しない**。ストア説明文はパブリッシャーの著作物であり、ガイドライン全文と同じく転載しない方針(requirements.md §10)。「どんなゲームか」はメディア(スクリーンショット・動画)と運営執筆の `summary` で伝える。
 
 ## 3. 画像の取り扱いルール(必ず遵守)
 
 requirements.md §10 の調査(2026-07-14)に基づく確定方針:
 
-1. **ホットリンクのみ**: `header_image_url` に保存した Steam CDN の URL を `<img src>` で直接参照する。画像ファイルのダウンロード・再ホスティング(Supabase Storage / public/ / Workers 経由のプロキシ)は**禁止**
+1. **ホットリンクのみ**: `header_image_url`・`screenshots`・`movie_url`・`movie_thumbnail_url` に保存した Steam CDN の URL を `<img src>` / `<video src>` で直接参照する。メディアファイルのダウンロード・再ホスティング(Supabase Storage / public/ / Workers 経由のプロキシ)は**禁止**。動画は `preload="none"` とし、ユーザー操作なしに Steam CDN へ動画リクエストを発生させない
 2. 画像最適化(サーバー側でのリサイズ・再エンコード)は行わない。最適化を通すと自サーバーからの「再配信」に近くなるため、**素の `<img>`(または `next/image` の `unoptimized`)で Steam CDN から直接配信する**(`loading="lazy"` と `width/height` 指定で代替)。Cloudflare Images / Workers での画像プロキシも使わない
 3. 画像が 404 になった場合(ストア取り下げ等)に備え、`onError` 相当のフォールバック(タイトル文字のプレースホルダー)を用意する
 4. Steam ロゴ・商標画像は使わない。「Steam で見る」テキストリンクのみ

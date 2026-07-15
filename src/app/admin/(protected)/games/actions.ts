@@ -23,6 +23,14 @@ const steamCdnUrl = z.string().trim().refine((value) => {
   }
 }, "Steam CDNのhttps URLを入力してください。");
 
+const playModeSchema = z.enum([
+  "singleplayer",
+  "online_pvp",
+  "online_coop",
+  "local_multi",
+  "mmo",
+]);
+
 const gameSchema = z.object({
   title: z.string().trim().min(1, "タイトルを入力してください。"),
   title_en: z.string().trim(),
@@ -41,6 +49,11 @@ const gameSchema = z.object({
     .trim()
     .refine((value) => !value || /^\d+$/.test(value), "Steam App IDは数字で入力してください。"),
   header_image_url: steamCdnUrl,
+  play_modes: z.array(playModeSchema),
+  screenshots: z.array(steamCdnUrl).max(6, "スクリーンショットは6枚まで選択できます。"),
+  movie_url: steamCdnUrl,
+  movie_thumbnail_url: steamCdnUrl,
+  summary: z.string().trim().max(200, "概要は200文字以内で入力してください。"),
   guideline_scope: z.enum(["publisher_wide", "title_specific"]),
   streaming_status: z.enum(["allowed", "conditional", "prohibited", "unknown"]),
   monetization_status: z.enum(["allowed", "conditional", "prohibited", "unknown"]),
@@ -87,6 +100,11 @@ function parseGameForm(formData: FormData) {
     genres: formData.get("genres"),
     steam_app_id: formData.get("steam_app_id"),
     header_image_url: formData.get("header_image_url"),
+    play_modes: formData.getAll("play_modes"),
+    screenshots: formData.getAll("screenshots"),
+    movie_url: formData.get("movie_url"),
+    movie_thumbnail_url: formData.get("movie_thumbnail_url"),
+    summary: formData.get("summary"),
     guideline_scope: formData.get("guideline_scope"),
     streaming_status: formData.get("streaming_status"),
     monetization_status: formData.get("monetization_status"),
@@ -158,6 +176,11 @@ function toGameData(
       : [],
     steam_app_id: values.steam_app_id ? Number(values.steam_app_id) : null,
     header_image_url: nullable(values.header_image_url),
+    play_modes: values.play_modes,
+    screenshots: values.screenshots,
+    movie_url: nullable(values.movie_url),
+    movie_thumbnail_url: nullable(values.movie_thumbnail_url),
+    summary: nullable(values.summary),
     guideline_scope: values.guideline_scope,
     streaming_status: values.streaming_status,
     monetization_status: values.monetization_status,
