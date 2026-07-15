@@ -210,6 +210,7 @@ function revalidateGamePages(slug: string) {
   revalidatePath("/");
   revalidatePath("/games");
   revalidatePath(`/games/${slug}`);
+  revalidatePath("/sitemap.xml");
   revalidatePath("/publishers");
   revalidatePath("/publishers/[slug]", "page");
   revalidatePath("/admin");

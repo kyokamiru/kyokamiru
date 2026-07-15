@@ -107,6 +107,7 @@ async function revalidatePublisherPages(slug: string) {
   revalidatePath("/");
   revalidatePath("/publishers");
   revalidatePath(`/publishers/${slug}`);
+  revalidatePath("/sitemap.xml");
   revalidatePath("/games/[slug]", "page");
   revalidatePath("/admin");
   revalidatePath("/admin/publishers");
@@ -203,9 +204,6 @@ export async function deletePublisherAction(
     return { error: "パブリッシャーを削除できませんでした。" };
   }
 
-  revalidatePath("/publishers");
-  revalidatePath(`/publishers/${slug}`);
-  revalidatePath("/admin");
-  revalidatePath("/admin/publishers");
+  await revalidatePublisherPages(slug);
   redirect("/admin/publishers?saved=deleted");
 }
