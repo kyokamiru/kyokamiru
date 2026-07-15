@@ -31,3 +31,8 @@ export const sourceTypeLabels = {
   dev_statement: "開発者発言",
   other: "その他",
 } as const;
+
+export const guidelineScopeLabels = {
+  title_specific: "タイトル個別",
+  publisher_wide: "パブリッシャー包括",
+} as const;

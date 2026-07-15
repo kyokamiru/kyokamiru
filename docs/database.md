@@ -109,6 +109,8 @@ begin
 end;
 $$ language plpgsql;
 
+alter function public.set_updated_at() set search_path = '';
+
 create trigger publishers_updated_at before update on publishers
   for each row execute function set_updated_at();
 create trigger games_updated_at before update on games

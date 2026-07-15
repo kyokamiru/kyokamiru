@@ -33,11 +33,24 @@ pnpm dev              # 開発サーバー (http://localhost:3000)
 pnpm build            # 本番ビルド(コミット前に必ず通すこと)
 pnpm lint             # ESLint
 pnpm typecheck        # tsc --noEmit
-pnpm preview          # opennextjs-cloudflare build + wrangler dev(Workers ランタイムでの動作確認)
-pnpm deploy           # opennextjs-cloudflare build + wrangler deploy(手動デプロイ)
 ```
 
-Workers ランタイム固有の挙動(Node API 互換等)が関わる変更は `pnpm preview` でも確認すること。
+Workers 基盤の導入(implementation-plan.md Phase 3 冒頭)後は、以下も利用可能になる:
+
+```bash
+pnpm preview          # opennextjs-cloudflare build && opennextjs-cloudflare preview(Workers ランタイムでの動作確認)
+pnpm deploy           # opennextjs-cloudflare build && opennextjs-cloudflare deploy(手動デプロイ)
+pnpm cf-typegen       # wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts(バインディング型の生成)
+```
+
+Workers ランタイム固有の挙動(ISR・Server Actions・Node API 互換等)が関わる変更は `pnpm preview` でも確認すること。
+
+## Workers ランタイム要件(必ず守る)
+
+- `wrangler.jsonc` で `nodejs_compat` を有効にする。これは Supabase 専用の設定ではなく、**@opennextjs/cloudflare で Next.js を動かすための前提要件**
+- `compatibility_date` は **2024-09-23 以降**にする
+- Next.js は**デフォルトの Node.js ランタイム**で動かす。`export const runtime = "edge"` は**どのルートにも書かない**
+- Cloudflare Pages および `@cloudflare/next-on-pages` は使用しない
 
 ## コーディング規約
 

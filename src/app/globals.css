@@ -5,13 +5,28 @@
   --page-background-deep: #111a26;
   --panel-background: #21354a;
   --panel-background-muted: #1b2b3d;
+  --panel-background-deep: #182839;
+  --input-background: #101b28;
+  --image-fallback: #162637;
   --border-color: #35536d;
   --text-primary: #f3f7fa;
   --text-secondary: #c5d2dc;
   --text-muted: #92a7b7;
   --accent: #66b9e8;
   --accent-strong: #8cccf0;
-  --status-allowed: #84c45b;
+  --accent-muted: #4f8fb5;
+  --status-allowed-bg: #213d2a;
+  --status-allowed-border: #5a9543;
+  --status-allowed-text: #a8dc83;
+  --status-conditional-bg: #453b20;
+  --status-conditional-border: #a58b39;
+  --status-conditional-text: #ead47d;
+  --status-prohibited-bg: #4a2629;
+  --status-prohibited-border: #a64a52;
+  --status-prohibited-text: #f19aa1;
+  --status-unknown-bg: #303944;
+  --status-unknown-border: #657484;
+  --status-unknown-text: #c0cad3;
 }
 
 * {
@@ -27,7 +42,8 @@ body {
   margin: 0;
   background: var(--page-background);
   color: var(--text-secondary);
-  font-family: "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", sans-serif;
+  font-family: "Avenir Next", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", sans-serif;
+  line-height: 1.5;
 }
 
 ::selection {
@@ -38,4 +54,18 @@ body {
 :focus-visible {
   outline: 2px solid var(--accent-strong);
   outline-offset: 3px;
+}
+
+a,
+button,
+input,
+select,
+summary {
+  border-radius: 2px;
+}
+
+button,
+summary,
+select {
+  cursor: pointer;
 }

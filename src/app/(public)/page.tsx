@@ -1,132 +1,108 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
-const previewGames = [
-  {
-    title: "海外インディーゲーム",
-    publisher: "公開データ準備中",
-    status: "可否を公式情報から確認",
-  },
-  {
-    title: "話題の新作タイトル",
-    publisher: "公開データ準備中",
-    status: "根拠リンクと確認日を掲載",
-  },
-];
+import { GameCapsule } from "@/components/game-capsule";
+import { StatusBadge } from "@/components/status-badge";
+import { getNewGames, getRecentlyVerifiedGames } from "@/lib/queries";
+import { createPageMetadata } from "@/lib/metadata";
 
-export default function HomePage() {
+export const metadata: Metadata = createPageMetadata({
+  title: "ゲーム配信ガイドラインDB",
+  description: "ゲームの配信可否・収益化可否と、判断の根拠になる公式情報を10秒で確認できます。",
+  path: "/",
+});
+
+export const revalidate = 3600;
+
+function GameSection({
+  eyebrow,
+  title,
+  games,
+}: {
+  eyebrow: string;
+  title: string;
+  games: Awaited<ReturnType<typeof getNewGames>>;
+}) {
   return (
-    <div className="min-h-dvh bg-[var(--page-background)]">
-      <header className="border-b border-[var(--border-color)] bg-[var(--page-background-deep)]">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link
-            href="/"
-            className="text-xl font-bold text-[var(--text-primary)] no-underline"
-          >
-            キョカミル
-          </Link>
-          <span className="rounded-sm border border-[var(--border-color)] px-3 py-1 text-xs text-[var(--text-muted)]">
-            公開準備中
-          </span>
+    <section className="py-9 sm:py-12">
+      <div className="mb-5 flex items-end justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-[var(--accent-strong)]">{eyebrow}</p>
+          <h2 className="mt-1 text-balance text-2xl font-black text-[var(--text-primary)]">{title}</h2>
         </div>
-      </header>
+        <Link href="/games" className="text-sm text-[var(--accent-strong)] underline underline-offset-4">すべて見る</Link>
+      </div>
+      {games.length > 0 ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {games.map((game) => <GameCapsule key={game.id} game={game} />)}
+        </div>
+      ) : (
+        <div className="border border-[var(--border-color)] bg-[var(--panel-background)] p-6 text-pretty text-sm text-[var(--text-muted)]">
+          掲載ゲームを準備しています。<Link href="/contact" className="ml-1 text-[var(--accent-strong)] underline underline-offset-4">掲載リクエストはこちら</Link>
+        </div>
+      )}
+    </section>
+  );
+}
 
-      <main>
-        <section className="border-b border-[var(--border-color)] bg-[var(--panel-background-muted)]">
-          <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-            <p className="mb-3 text-sm font-semibold text-[var(--accent-strong)]">
-              配信ガイドラインデータベース
-            </p>
-            <h1 className="max-w-3xl text-balance text-3xl font-bold leading-tight text-[var(--text-primary)] sm:text-5xl">
-              このゲーム、収益化配信して大丈夫？
+export default async function HomePage() {
+  const [newGames, recentlyVerifiedGames] = await Promise.all([
+    getNewGames(8),
+    getRecentlyVerifiedGames(8),
+  ]);
+
+  return (
+    <>
+      <section className="border-b border-[var(--border-color)] bg-[var(--panel-background-muted)]">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+          <div className="max-w-4xl border-l-4 border-[var(--accent)] pl-5 sm:pl-7">
+            <p className="text-sm font-bold text-[var(--accent-strong)]">配信ガイドラインデータベース</p>
+            <h1 className="mt-3 text-balance text-3xl font-black leading-tight text-[var(--text-primary)] sm:text-5xl">
+              このゲーム、<span className="whitespace-nowrap">収益化配信して</span>大丈夫？
             </h1>
-            <p className="mt-5 max-w-2xl text-pretty text-base leading-7 sm:text-lg">
-              配信可否・収益化可否と、その判断の根拠になる公式情報を
-              10秒で確認できるデータベースです。
+            <p className="mt-5 max-w-2xl text-pretty text-base leading-7 text-[var(--text-secondary)] sm:text-lg">
+              配信可否・収益化可否と、その判断の根拠になる公式情報を10秒で確認できます。
             </p>
+          </div>
 
-            <div className="mt-8 max-w-3xl border border-[var(--border-color)] bg-[var(--page-background-deep)] p-2 shadow-lg">
-              <div className="flex min-h-12 items-center gap-3 px-3 text-[var(--text-muted)]">
-                <svg
-                  aria-hidden="true"
-                  className="size-5 shrink-0"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m20 20-4-4" />
-                </svg>
-                <span className="text-sm sm:text-base">
-                  ゲーム名・パブリッシャー名で検索
-                </span>
-                <span className="ml-auto hidden bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-[var(--page-background-deep)] sm:block">
-                  近日公開
-                </span>
+          <form action="/games" className="mt-8 flex max-w-4xl border border-[var(--border-color)] bg-[var(--page-background-deep)] p-2 shadow-lg">
+            <label htmlFor="hero-search" className="sr-only">ゲーム名・パブリッシャー名で検索</label>
+            <input
+              id="hero-search"
+              name="q"
+              type="search"
+              placeholder="ゲーム名・パブリッシャー名を入力"
+              className="min-h-12 min-w-0 flex-1 bg-transparent px-3 text-base text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+            />
+            <button type="submit" className="min-h-12 bg-[var(--accent)] px-5 font-bold text-[var(--page-background-deep)] hover:bg-[var(--accent-strong)] sm:px-8">
+              検索
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-7xl divide-y divide-[var(--border-color)] px-4 sm:px-6 lg:px-8">
+        <GameSection eyebrow="新しく追加" title="新着ゲーム" games={newGames} />
+        <GameSection eyebrow="確認情報を更新" title="最近確認したゲーム" games={recentlyVerifiedGames} />
+
+        <section className="py-9 sm:py-12">
+          <p className="text-sm font-semibold text-[var(--accent-strong)]">可否表示について</p>
+          <h2 className="mt-1 text-balance text-2xl font-black text-[var(--text-primary)]">情報の見方</h2>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {([
+              ["allowed", "公式情報で許可を確認"],
+              ["conditional", "条件・注意事項あり"],
+              ["prohibited", "配信または収益化不可"],
+              ["unknown", "公式情報で判断できない"],
+            ] as const).map(([status, description]) => (
+              <div key={status} className="border border-[var(--border-color)] bg-[var(--panel-background)] p-4">
+                <StatusBadge kind="approval" value={status} />
+                <p className="mt-3 text-pretty text-sm leading-6 text-[var(--text-muted)]">{description}</p>
               </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-          <div className="mb-4 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-sm text-[var(--accent-strong)]">掲載準備中</p>
-              <h2 className="mt-1 text-balance text-2xl font-bold text-[var(--text-primary)]">
-                掲載予定の情報
-              </h2>
-            </div>
-            <p className="hidden text-sm text-[var(--text-muted)] sm:block">
-              一次情報を運営が確認して掲載
-            </p>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            {previewGames.map((game) => (
-              <article
-                key={game.title}
-                className="grid grid-cols-[7rem_1fr] overflow-hidden border border-[var(--border-color)] bg-[var(--panel-background)] shadow-md sm:grid-cols-[10rem_1fr]"
-              >
-                <div className="flex min-h-28 items-center justify-center border-r border-[var(--border-color)] bg-[var(--page-background-deep)] px-4 text-center text-xs text-[var(--text-muted)]">
-                  ゲーム画像
-                </div>
-                <div className="flex min-w-0 flex-col justify-center p-4">
-                  <h3 className="truncate font-semibold text-[var(--text-primary)]">
-                    {game.title}
-                  </h3>
-                  <p className="mt-1 truncate text-sm text-[var(--text-muted)]">
-                    {game.publisher}
-                  </p>
-                  <p className="mt-4 text-pretty text-sm text-[var(--status-allowed)]">
-                    ● {game.status}
-                  </p>
-                </div>
-              </article>
             ))}
           </div>
         </section>
-      </main>
-
-      <footer className="border-t border-[var(--border-color)] bg-[var(--page-background-deep)]">
-        <div className="mx-auto grid max-w-6xl gap-2 px-4 py-6 text-pretty text-xs leading-5 text-[var(--text-muted)] sm:px-6">
-          <p>
-            本サービスは参考情報の提供を目的としています。配信前に必ず公式情報をご確認ください。
-          </p>
-          <p>
-            ゲーム情報・画像は
-            <a
-              href="https://store.steampowered.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mx-1 text-[var(--accent-strong)] underline underline-offset-2"
-            >
-              Steam
-            </a>
-            より取得しています。キョカミルは Valve Corporation
-            とは無関係です。
-          </p>
-        </div>
-      </footer>
-    </div>
+      </div>
+    </>
   );
 }

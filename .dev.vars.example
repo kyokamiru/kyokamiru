@@ -1,0 +1,10 @@
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-local-anon-key
+NEXT_PUBLIC_SITE_URL=http://localhost:8787
+
+# 管理画面のServer Actions専用。実値はコミットしない。
+SUPABASE_SERVICE_ROLE_KEY=your-local-service-role-key
+
+# Cache PurgeはCloudflare Zone上でのみ使用する。本番ではWorker Secretとして設定する。
+# CACHE_PURGE_API_TOKEN=
+# CACHE_PURGE_ZONE_ID=

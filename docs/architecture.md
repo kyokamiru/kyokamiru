@@ -8,7 +8,9 @@
 ```
 [ユーザー] ──> Cloudflare Workers (Next.js App Router / @opennextjs/cloudflare)
                  ├─ 公開ページ: ISR (revalidate) + Server Components
-                 │    └─ ISR キャッシュ: R2 / KV バインディング(OpenNext 設定)
+                 │    ├─ Incremental Cache: R2
+                 │    ├─ ISR 再検証の重複排除: Durable Object Queue
+                 │    └─ Tag Cache (revalidatePath/Tag): D1
                  ├─ 管理画面 (/admin): 動的レンダリング + Supabase Auth
                  └─ Server Actions / Route Handlers
                        ├──> Supabase (PostgreSQL, RLS)
@@ -20,10 +22,33 @@
 
 ### ホスティング方式(確定)
 
-- **Cloudflare Workers + `@opennextjs/cloudflare`(OpenNext アダプタ)** を使う。Cloudflare Pages + `next-on-pages` は使わない(非推奨経路)
-- `wrangler.jsonc` で `nodejs_compat` フラグを有効化する(@supabase/supabase-js の動作に必要)
-- ISR の incremental cache 用に R2(または KV)バインディングを OpenNext の設定(`open-next.config.ts`)で構成する。`revalidatePath` / `revalidateTag` による on-demand revalidation もこの構成で動作させる
-- デプロイ: `opennextjs-cloudflare build` → `wrangler deploy`(CI は GitHub Actions または Workers Builds)
+- **Cloudflare Workers + `@opennextjs/cloudflare`(OpenNext アダプタ)** を使う。Cloudflare Pages および `@cloudflare/next-on-pages` は使わない(非推奨経路)
+- コマンド(package.json スクリプトとして定義):
+  - `preview`: `opennextjs-cloudflare build && opennextjs-cloudflare preview`
+  - `deploy`: `opennextjs-cloudflare build && opennextjs-cloudflare deploy`
+  - `cf-typegen`: `wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`
+- 本番への Git 連携デプロイは **Workers Builds**(implementation-plan.md Phase 6)。手動デプロイは `pnpm deploy`
+
+### Workers ランタイム要件
+
+- `wrangler.jsonc` で `nodejs_compat` を有効化する。**@opennextjs/cloudflare で Next.js を動かすための前提要件**(@supabase/supabase-js もこの上で動く)
+- `compatibility_date` は **2024-09-23 以降**
+- Next.js は**デフォルトの Node.js ランタイム**を使う。`export const runtime = "edge"` はどのルートにも書かない
+- 参考: [Cloudflare の Next.js ガイド](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/)、[OpenNext Get Started](https://opennext.js.org/cloudflare/get-started)
+
+### ISR キャッシュ構成(MVP 確定)
+
+`open-next.config.ts` で以下を構成する(参考: [OpenNext Caching](https://opennext.js.org/cloudflare/caching)):
+
+| 役割 | 使用リソース |
+|------|-------------|
+| Incremental Cache(ISR ページ本体の保存) | **R2** |
+| 時間ベース ISR(revalidate: 3600)の再検証の重複排除 | **Durable Object Queue** |
+| `revalidatePath` / `revalidateTag` の管理 | **D1 Tag Cache** |
+| on-demand revalidation 時のキャッシュ削除 | **Cache Purge 構成** |
+
+- **Workers KV は使わない**: 結果整合性のため revalidation 後も古いデータが残る可能性があり、「管理画面で更新→即反映」の要件(screens.md / implementation-plan.md Phase 4)と両立しないため MVP では採用しない
+- R2 の Incremental Cache 単体では on-demand revalidation は完結しない。Tag Cache(D1)+ Queue + Cache Purge を併せて構成すること
 
 ## 2. レンダリング戦略
 
@@ -92,9 +117,22 @@ kyoka-miru/
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | クライアント可 | anon キー(RLS 前提) |
 | `SUPABASE_SERVICE_ROLE_KEY` | **サーバーのみ** | 管理画面の書き込み(Server Actions 内のみで使用) |
 | `NEXT_PUBLIC_SITE_URL` | クライアント可 | `https://kyokamiru.com`(OGP・sitemap 用) |
+| `CACHE_PURGE_API_TOKEN` | **サーバーのみ** | on-demand revalidation 時に Cloudflare Zone Cache を削除する API トークン |
+| `CACHE_PURGE_ZONE_ID` | **サーバーのみ** | `kyokamiru.com` を管理する Cloudflare Zone ID |
 
+### ビルド時と実行時は別管理(重要)
+
+Cloudflare では「ビルド時に必要な変数」と「Worker 実行時の変数」が**別の場所で管理される**(参考: [Workers Builds Configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/))。
+
+| タイミング | 設定場所 | 対象変数 |
+|-----------|---------|---------|
+| **ビルド時**(Workers Builds の **Build Variables**) | Cloudflare ダッシュボードのビルド設定 | `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`、`NEXT_PUBLIC_SITE_URL`。`generateStaticParams` / `generateMetadata` / ビルド時データ取得で必要 |
+| **実行時**(公開可能な値) | `wrangler.jsonc` の `vars`(または Worker の Variables) | `NEXT_PUBLIC_*` の 3 変数 |
+| **実行時**(シークレット) | **Worker Secret のみ**(`wrangler secret put`) | `SUPABASE_SERVICE_ROLE_KEY`、`CACHE_PURGE_API_TOKEN`、`CACHE_PURGE_ZONE_ID` |
+
+- `SUPABASE_SERVICE_ROLE_KEY` と `CACHE_PURGE_*` を **Build Variables や `wrangler.jsonc` に書かない**(実行時 Secret のみ)
+- Cache Purge は Cloudflare Zone(カスタムドメイン)上でのみ有効。ローカルの `pnpm preview` では R2 / D1 による on-demand revalidation を確認し、Zone Cache の削除は Phase 6 で `kyokamiru.com` 上から確認する
 - ローカル開発: `.env.local`(`.env.local.example` を用意し、実キーはコミットしない)
-- 本番(Cloudflare): 公開可能な変数は `wrangler.jsonc` の `vars`、`SUPABASE_SERVICE_ROLE_KEY` は **Worker Secret**(`wrangler secret put`)で設定する。`wrangler.jsonc` にシークレットを書かない
 
 ## 5. 認証(管理画面)
 
